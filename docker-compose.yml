@@ -2,7 +2,7 @@ version: "3"
 services:
   lb:
     build: .
-    image: zenoss/zing-nginx:dev
+    image: ${CI_IMAGE:-zenoss/zing-nginx:dev}
     ports:
     - 8000:8000/tcp
     - 8001:8001/tcp
