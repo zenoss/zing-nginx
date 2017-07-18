@@ -8,15 +8,14 @@ node('docker') {
         global = load env.GLOBAL
     }
     service = load 'ci/service.groovy'
+    sh('git rev-parse --short=8 HEAD > ci/.image_tag')
 
     stage('Build image') {
 		sh("${MAKE} build")
     }
 
     stage('Publish image as "latest"') {
-        dir('service') {
-			def imageName = "${global.PUBLISHER_DEVELOP}/${service.DOCKER_IMAGE}:latest"
-			sh("${MAKE} push REMOTE_IMAGE=${imageName}")
-        }
+		def imageName = "${global.PUBLISHER_DEVELOP}/${service.DOCKER_IMAGE}:latest"
+		sh("${MAKE} push REMOTE_IMAGE=${imageName}")
     }
 }

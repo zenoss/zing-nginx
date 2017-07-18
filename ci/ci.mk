@@ -12,8 +12,8 @@ endif
 .PHONY: build
 build: export IMAGE = $(IMAGE_NAME)
 build: export COMMIT_SHA = $(shell git rev-parse HEAD)
-build: $(CI_PROJECT_NAME) $(CI_IMAGE_TAG) $(DOCKER_COMPOSE)
-	@$(DOCKER_COMPOSE) $(PROJECT_NAME) build lb
+build: $(CI_IMAGE_TAG) $(DOCKER_COMPOSE)
+	@$(DOCKER_COMPOSE) build lb
 
 
 .PHONY: api-test
