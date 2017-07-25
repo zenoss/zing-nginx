@@ -1,8 +1,15 @@
-version: "3"
+version: "3.3"
 services:
-  lb:
-    build: .
-    image: ${IMAGE:-zenoss/zing-nginx:dev}
+  nginx:
+    build: 
+      context: .
+      labels:
+        zenoss.zing.commit-sha: ${COMMIT_SHA:-none}
+        zenoss.zing.pull-request: ${PULL_REQUEST:-none}
+        zenoss.zing.branch_name: ${GIT_BRANCH:-none}
+        zenoss.zing.build_number: ${BUILD_ID:-none}
+        zenoss.zing.build_url: ${BUILD_URL:-none}
+    image: ${SERVICE_IMAGE}:${IMAGE_TAG:-dev}
     ports:
     - 8000:8000/tcp
     - 8001:8001/tcp

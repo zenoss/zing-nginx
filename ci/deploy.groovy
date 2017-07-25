@@ -1,4 +1,4 @@
-MAKE='make -f Makefile -f ci/ci.mk'
+MAKE='make -f ci/Makefile'
 node('docker') {
 	git url: 'https://github.com/zenoss/zing-nginx.git'
 
@@ -7,15 +7,23 @@ node('docker') {
     ]){
         global = load env.GLOBAL
     }
-    service = load 'ci/service.groovy'
-    sh('git rev-parse --short=8 HEAD > ci/.image_tag')
 
-    stage('Build image') {
-		sh("${MAKE} build")
-    }
+    COMMIT_SHA=sh(script: 'git rev-parse HEAD', returnStdout: true)
+    IMAGE_TAG=COMMIT_SHA.substring(0,8)
 
-    stage('Publish image as "latest"') {
-		def imageName = "${global.PUBLISHER_DEVELOP}/${service.DOCKER_IMAGE}:latest"
-		sh("${MAKE} push REMOTE_IMAGE=${imageName}")
-    }
+    withEnv([
+        "COMMIT_SHA=${COMMIT_SHA}",
+        "IMAGE_TAG=${IMAGE_TAG}"]) {
+		stage('Build image') {
+			sh("${MAKE} build")
+		}
+
+		stage('Publish image') {
+            sh("${MAKE} push REGISTRY=${global.PUBLISHER_DEVELOP}")
+		}
+
+		stage('Publish image as "latest"') {
+            sh("${MAKE} push REGISTRY=${global.PUBLISHER_DEVELOP} REMOTE_TAG=latest")
+		}
+	}
 }
