@@ -1,13 +1,6 @@
 #! groovy
 
-//
-// pull-request/Jenkinsfile - Jenkins script for initiating the {{Name}} microservice build
-//
-//  output files
-//  version.yml         - docker-compose file that describes the version of the image to test
-//
-
-MAKE='make -f Makefile -f ci/ci.mk'
+MAKE='make -f ci/Makefile'
 
 node('docker') {
     currentBuild.displayName = "PR #${env.ghprbPullId}@${env.NODE_NAME}"
@@ -18,39 +11,39 @@ node('docker') {
     }
 
     checkout scm
-    service = load 'ci/service.groovy'
-    SHA=sh(script: 'git rev-parse --short=8 HEAD | tee ci/.image_tag', returnStdout: true)
-    sh("echo -n nginx-${env.BUILD_NUMBER} > ci/.project_name")
 
-    try	{
-        stage('Run service tests') {
-            sh("${MAKE} test")
+    withEnv([
+        "COMMIT_SHA=${env.ghprbActualCommit}",
+        "IMAGE_TAG=${env.ghprbActualCommit.substring(0,8)}",
+        "PROJECT_NAME=cassandra-${env.BUILD_NUMBER}"]) {
+        try    {
+            stage('Run service tests') {
+                sh("${MAKE} test")
+            }
+
+            stage('Build service image') {
+                sh("${MAKE} build")
+            }
+
+            stage('Run service api tests') {
+                sh("${MAKE} api-test")
+            }
+        } finally {
+            stage ('Clean test environment') {
+                sh("${MAKE} ci-clean")
+            }
         }
 
-        stage('Build service image') {
-            sh("${MAKE} build")
+        stage('Publish image') {
+            sh("${MAKE} push REGISTRY=${global.PUBLISHER_DEVELOP}")
         }
 
-        stage('Run service api tests') {
-            sh("${MAKE} api-test")
+        stage('Promote to staging') {
+            sh("${MAKE} version.yaml REGISTRY=${global.PUBLISHER_STAGING}")
+            archiveArtifacts artifacts: 'version.yaml'
+            build job: env.GLOBAL_ACCEPTANCE_JOB, parameters: [
+                text(name: 'VERSION', value: readFile('version.yaml'))
+            ]
         }
-    } finally {
-        stage ('Clean test environment') {
-            sh("${MAKE} ci-clean")
-        }
-    }
-
-    stage('Publish image') {
-		def imageName = "${global.PUBLISHER_DEVELOP}/${service.DOCKER_IMAGE}:${SHA}"
-		sh("${MAKE} push REMOTE_IMAGE=${imageName}")
-    }
-
-    stage('Promote to staging') {
-        def imageName = "${global.PUBLISHER_STAGING}/${service.DOCKER_IMAGE}:${SHA}"
-        sh("${MAKE} version.yaml REMOTE_IMAGE=${imageName}")
-        archiveArtifacts artifacts: 'version.yaml'
-        build job: env.GLOBAL_ACCEPTANCE_JOB, parameters: [
-            text(name: 'VERSION', value: readFile('version.yaml'))
-        ]
     }
 }
