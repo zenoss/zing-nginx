@@ -15,7 +15,7 @@ node('docker') {
     withEnv([
         "COMMIT_SHA=${env.ghprbActualCommit}",
         "IMAGE_TAG=${env.ghprbActualCommit.substring(0,8)}",
-        "PROJECT_NAME=cassandra-${env.BUILD_NUMBER}"]) {
+        "PROJECT_NAME=nginx-${env.BUILD_NUMBER}"]) {
         try    {
             stage('Run service tests') {
                 sh("${MAKE} test")
