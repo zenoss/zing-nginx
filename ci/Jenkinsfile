@@ -1,0 +1,53 @@
+#! groovy
+
+MAKE='make -f ci/Makefile'
+
+node('docker') {
+
+    currentBuild.displayName = "PR #${env.ghprbPullId}@${env.NODE_NAME}"
+    configFileProvider([
+        configFile(fileId: 'global', variable: 'GLOBAL'),
+    ]) {
+        global = load env.GLOBAL
+    }
+
+    stage('Checkout') {
+        checkout scm
+    }
+
+    withEnv([
+        "COMMIT_SHA=${env.ghprbActualCommit}",
+        "IMAGE_TAG=${env.ghprbActualCommit.substring(0,8)}",
+        "PROJECT_NAME=zing-nginx-${env.BUILD_NUMBER}"]) {
+
+        stage('Build image') {
+            sh("${MAKE} build")
+        }
+
+        try {
+            configFileProvider([configFile(fileId: 'disable-release', variable: 'DISABLE_RELEASE')]) {
+                echo 'Production releases are DISABLED.  To enable, delete the "disable-release" config file from the service\'s folder'
+            }
+        } catch (Exception e) {
+            stage('Publish image') {
+                def pubSteps = [:]
+                for (int i = 0; i < global.PUBLISHERS.size(); i++) {
+                    def registry = "${global.PUBLISHERS[i]}"
+                    def stepName  = "publishing image to [${i}] ${registry}"
+                    pubSteps[stepName] = {
+                        sh("${MAKE} push REGISTRY=${registry}")
+                    }
+                }
+                parallel pubSteps
+            }
+
+            stage('Acceptance tests') {
+                sh("${MAKE} ci/version.yml REGISTRY=${global.PUBLISHER_STAGING}")
+                build job: env.GLOBAL_ACCEPTANCE_JOB, parameters: [
+                    text(name: 'VERSION', value: readFile('ci/version.yml')),
+                    text(name: 'OVERRIDE_BUILD_ID', value:"zing-nginx PR#${ghprbPullId}")
+                ]
+            }
+        }
+    }
+}
