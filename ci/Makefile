@@ -22,13 +22,13 @@ push: REMOTE_IMAGE_VALID IMAGE_NAME_VALID
 define VERSION_YAML
 version: "3.2"
 services:
-    zing-nginx:
-        image: $(REMOTE_IMAGE)
+    $${SERVICE_NAME}:
+        image: $${ZING_REGISTRY}/$(IMAGE_NAME)
 endef
 
 ci/version.yml: export VERSION_YAML:=$(VERSION_YAML)
-ci/version.yml: REMOTE_IMAGE_VALID
-	@$(DOCKER_COMPOSE_BASE) -f <(echo "$$VERSION_YAML") config > $@
+ci/version.yml: IMAGE_NAME_VALID
+	@echo "$$VERSION_YAML" > $@
 
 .PHONY: ci-clean
 ci-clean:
