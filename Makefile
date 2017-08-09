@@ -29,20 +29,12 @@ build: $(DOCKER_COMPOSE)
 run: vendor $(DOCKER_COMPOSE)
 	@$(DOCKER_COMPOSE_BASE) up --build
 
-.PHONY: clean
-clean:
-	rm -f **/junit.xml
-	rm -f **/*.coverprofile
-	rm -f hooks/*_hooks
-	rm -f {hooks,ci}/docker-compose.yml
-	rm -f ci/version.yml
-	rm -rf $(COVERAGE_DIR)
+.PHONY: down
+down:
 	$(DOCKER_COMPOSE_BASE) down
+
+.PHONY: clean
+clean:: down
 
 .PHONY: mrclean
 mrclean: clean
-	rm -f resources/controller_reg.go
-	rm -rf resources/app
-	rm -rf swagger
-	rm -rf glide.lock
-	rm -rf vendor
