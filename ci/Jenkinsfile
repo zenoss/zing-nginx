@@ -42,9 +42,10 @@ node('docker') {
             }
 
             stage('Acceptance tests') {
-                sh("${MAKE} ci/version.yml REGISTRY=${global.PUBLISHER_STAGING}")
+                sh("${MAKE} ci/version.yml")
+                archiveArtifacts artifacts: 'ci/version.yml'
                 build job: env.GLOBAL_ACCEPTANCE_JOB, parameters: [
-                    text(name: 'VERSION', value: readFile('ci/version.yml')),
+                    text(name: 'UPSTREAM_JOB_NAME', value: env.JOB_NAME),
                     text(name: 'OVERRIDE_BUILD_ID', value:"zing-nginx PR#${ghprbPullId}")
                 ]
             }

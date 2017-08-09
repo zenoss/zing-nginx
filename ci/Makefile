@@ -29,12 +29,3 @@ endef
 ci/version.yml: export VERSION_YAML:=$(VERSION_YAML)
 ci/version.yml: IMAGE_NAME_VALID
 	@echo "$$VERSION_YAML" > $@
-
-.PHONY: ci-clean
-ci-clean:
-	$(DOCKER_COMPOSE_BASE) down
-
-.PHONY: ci-mrclean
-ci-mrclean: ci-clean
-	rm -f ci/version.yml
-	rm -f ci/docker-compose.yml
