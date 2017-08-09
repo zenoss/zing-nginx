@@ -29,3 +29,7 @@ endef
 ci/version.yml: export VERSION_YAML:=$(VERSION_YAML)
 ci/version.yml: IMAGE_NAME_VALID
 	@echo "$$VERSION_YAML" > $@
+
+.PHONY: clean
+clean::
+	rm -f ci/version.yml
