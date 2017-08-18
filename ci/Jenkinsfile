@@ -44,10 +44,33 @@ node('docker') {
             stage('Acceptance tests') {
                 sh("${MAKE} ci/version.yml")
                 archiveArtifacts artifacts: 'ci/version.yml'
-                build job: env.GLOBAL_ACCEPTANCE_JOB, parameters: [
-                    text(name: 'UPSTREAM_JOB_NAME', value: env.JOB_NAME),
-                    text(name: 'OVERRIDE_BUILD_ID', value:"zing-nginx PR#${ghprbPullId}")
-                ]
+
+                try {
+                    staging = build job: env.GLOBAL_ACCEPTANCE_JOB, parameters: [
+                        text(name: 'UPSTREAM_JOB_NAME', value: env.JOB_NAME),
+                        text(name: 'OVERRIDE_BUILD_ID', value:"zing-nginx PR#${ghprbPullId}"),
+                    ]
+                } finally {
+                    step([
+                        $class: 'CopyArtifact',
+                        filter: 'test/e2e/reports/cucumber.html',
+                        fingerprintArtifacts: true,
+                        flatten: true,
+                        optional: true,
+                        projectName: staging.buildVariables.AcceptanceTestJobName,
+                        selector: [$class: 'SpecificBuildSelector', buildNumber: staging.buildVariables.AcceptanceTestBuildNumber],
+                        target: 'reports',
+                    ])
+                    publishHTML([
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'reports',
+                        reportFiles: 'cucumber.html',
+                        reportName: 'Acceptance Test Report',
+                        reportTitles: ''
+                    ])
+                }
             }
         }
     }
