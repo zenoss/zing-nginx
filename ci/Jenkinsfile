@@ -23,53 +23,5 @@ node('docker') {
         stage('Build image') {
             sh("${MAKE} build")
         }
-
-        try {
-            configFileProvider([configFile(fileId: 'disable-release', variable: 'DISABLE_RELEASE')]) {
-                echo 'Production releases are DISABLED.  To enable, delete the "disable-release" config file from the service\'s folder'
-            }
-        } catch (Exception e) {
-            stage('Publish image') {
-                def pubSteps = [:]
-                for (int i = 0; i < global.PUBLISHERS.size(); i++) {
-                    def registry = "${global.PUBLISHERS[i]}"
-                    def stepName  = "publishing image to [${i}] ${registry}"
-                    pubSteps[stepName] = {
-                        sh("${MAKE} push REGISTRY=${registry}")
-                    }
-                }
-                parallel pubSteps
-            }
-
-            stage('Acceptance tests') {
-                sh("${MAKE} ci/version.yml")
-                archiveArtifacts artifacts: 'ci/version.yml'
-
-                staging = build job: env.GLOBAL_ACCEPTANCE_JOB, propagate: false, parameters: [
-                    text(name: 'UPSTREAM_JOB_NAME', value: env.JOB_NAME),
-                    text(name: 'OVERRIDE_BUILD_ID', value:"zing-nginx PR#${ghprbPullId}"),
-                ]
-                step([
-                    $class: 'CopyArtifact',
-                    filter: 'test/e2e/reports/cucumber.html',
-                    fingerprintArtifacts: true,
-                    flatten: true,
-                    optional: true,
-                    projectName: staging.buildVariables.AcceptanceTestJobName,
-                    selector: [$class: 'SpecificBuildSelector', buildNumber: staging.buildVariables.AcceptanceTestBuildNumber],
-                    target: 'reports',
-                ])
-                publishHTML([
-                    allowMissing: true,
-                    alwaysLinkToLastBuild: true,
-                    keepAll: true,
-                    reportDir: 'reports',
-                    reportFiles: 'cucumber.html',
-                    reportName: 'Acceptance Test Report',
-                    reportTitles: ''
-                ])
-                currentBuild.result = staging.getResult()
-            }
-        }
     }
 }
